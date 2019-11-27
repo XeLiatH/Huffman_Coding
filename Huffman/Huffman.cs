@@ -6,12 +6,12 @@ using System.Collections.Generic;
 
 namespace Huffman
 {
-    public class Huffman
+    public static class Huffman
     {
         public const int BLOCK_LENGTH = 4096;
         public const char SEPARATOR = ';';
 
-        public KeyValuePair<Dictionary<char, BitArray>, bool[]> Encode(string input)
+        public static KeyValuePair<Dictionary<char, BitArray>, bool[]> Encode(string input)
         {
             // TODO: návratová hodnota? vrácí kodovaci tabulku a data
             // asi vracet Slovník něco jako Dictionary<List<bool>, bool[4096]> ?
@@ -131,7 +131,7 @@ namespace Huffman
             return new KeyValuePair<Dictionary<char, BitArray>, bool[]>(lookupTable, outputBits.ToArray());
         }
 
-        private Dictionary<char, BitArray> CreateLookupTable(Node tree)
+        private static Dictionary<char, BitArray> CreateLookupTable(Node tree)
         {
             Dictionary<char, BitArray> lookupTable = new Dictionary<char, BitArray>();
             BuildCode(tree, new List<bool>(), ref lookupTable);
@@ -139,7 +139,7 @@ namespace Huffman
             return lookupTable;
         }
 
-        private void BuildCode(Node node, List<bool> ba, ref Dictionary<char, BitArray> lookupTable)
+        private static void BuildCode(Node node, List<bool> ba, ref Dictionary<char, BitArray> lookupTable)
         {
             if (node.IsLeaf())
             {
@@ -159,7 +159,7 @@ namespace Huffman
             BuildCode(node.Right, br, ref lookupTable);
         }
 
-        public string Decode(Dictionary<char, BitArray> lookupTable, bool[] data)
+        public static string Decode(Dictionary<char, BitArray> lookupTable, bool[] data)
         {
             string result = "";
 

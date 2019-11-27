@@ -3,110 +3,55 @@ using System.IO;
 using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
+using CommandLine;
 
 namespace Huffman
 {
+    class Options
+    {
+        [Option('m', "mode", Required = true, HelpText = "k - encode | d - decode")]
+        public char Mode { get; set; }
+
+        [Option('i', "input", Required = true, HelpText = "Input file to be processed.")]
+        public string InputFile { get; set; }
+
+        [Option('o', "output", Required = false, HelpText = "If specified, output is saved to a file.")]
+        public string OutputFile { get; set; }
+
+    }
     class Program
     {
         static void Main(string[] args)
         {
-            // TODO: do all this shit per 4096 byte (char) blocks -> read it to string and put it into the encode function periodically
-            // do this in a class in between -- something like HuffmanHandler ?
+            Parser.Default.ParseArguments<Options>(args)
+                .WithParsed(opts => RunOptionsAndReturnExitCode(opts))
+                .WithNotParsed((errs) => HandleParseError(errs));
+        }
 
-            StreamReader sr = new StreamReader("test.txt");
+        private static void HandleParseError(IEnumerable<Error> errs)
+        {
+            return;
+        }
 
-            // produkuje prázdný znaky na konci
-
-            BinaryWriter fout = new BinaryWriter(new FileStream("test.bin", FileMode.Create));
-
-            char[] buffer = new char[Huffman.BLOCK_LENGTH];
-            while (sr.Read(buffer, 0, Huffman.BLOCK_LENGTH) > 0)
+        private static void RunOptionsAndReturnExitCode(Options opts)
+        {
+            FileStream output = null;
+            if (opts.OutputFile != null)
             {
-                string input = new string(buffer);
-
-                KeyValuePair<Dictionary<char, BitArray>, bool[]> result = (new Huffman()).Encode(input);
-
-                foreach (KeyValuePair<char, BitArray> pair in result.Key)
-                {
-                    fout.Write(pair.Key);
-                    fout.Write(pair.Value.Length);
-                    foreach (bool bit in pair.Value)
-                    {
-                        fout.Write(bit);
-                    }
-
-                    fout.Flush();
-                }
-
-                fout.Write(Huffman.SEPARATOR);
-                fout.Flush();
-
-                fout.Write(result.Value.Length);
-                fout.Flush();
-                foreach (bool bit in result.Value)
-                {
-                    fout.Write(bit);
-                    fout.Flush();
-                }
+                output = new FileStream(opts.OutputFile, FileMode.Create);
             }
 
-            fout.Close();
+            var hh = new HuffmanHandler(new FileStream(opts.InputFile, FileMode.Open), output);
 
-            // Decode binary to string
-            // two arguments - lookupTableBin, dataBin
-            BinaryReader fin = new BinaryReader(new FileStream("test.bin", FileMode.Open));
-
-            Dictionary<char, BitArray> lookupTable = new Dictionary<char, BitArray>();
-            List<bool> data = new List<bool>();
-
-            string decoded = "";
-
-            int dataLen = 0;
-            bool readingLookupTable = true;
-            while (fin.BaseStream.Position != fin.BaseStream.Length)
+            if (opts.Mode == 'k')
             {
-                if (readingLookupTable)
-                {
-                    char letter = fin.ReadChar();
-
-                    if (letter == Huffman.SEPARATOR)
-                    {
-                        readingLookupTable = false;
-                        dataLen = fin.ReadInt32();
-                        continue;
-                    }
-
-                    int len = fin.ReadInt32();
-                    bool[] bits = new bool[len];
-                    for (int i = 0; i < len; i++)
-                    {
-                        bits[i] = fin.ReadBoolean();
-                    }
-
-                    lookupTable.Add(letter, new BitArray(bits));
-                }
-                else
-                {
-                    data.Add(fin.ReadBoolean());
-
-                    if (dataLen == data.Count)
-                    {
-                        string dec = (new Huffman()).Decode(lookupTable, data.ToArray());
-                        // Console.WriteLine(dec);
-                        decoded += dec;
-                        readingLookupTable = true;
-                        dataLen = 0;
-                        lookupTable.Clear();
-                        data.Clear();
-                    }
-                }
+                hh.Encode();
             }
 
-            Console.WriteLine(decoded);
-
-            // Console.WriteLine();
-            // Console.Write("Dekódovaný výstup: ");
-            // Console.WriteLine("\"" + (new Huffman()).Decode(lookupTable, data.ToArray()) + "\"");
+            if (opts.Mode == 'd')
+            {
+                hh.Decode();
+            }
         }
     }
 }
