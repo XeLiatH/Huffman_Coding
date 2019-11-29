@@ -11,11 +11,8 @@ namespace Huffman
         public const int BLOCK_LENGTH = 4096;
         public const char SEPARATOR = ';';
 
-        public static KeyValuePair<Dictionary<char, BitArray>, bool[]> Encode(string input)
+        public static KeyValuePair<Dictionary<char, BitArray>, BitArray> Encode(string input)
         {
-            // TODO: návratová hodnota? vrácí kodovaci tabulku a data
-            // asi vracet Slovník něco jako Dictionary<List<bool>, bool[4096]> ?
-
             Console.WriteLine();
             Console.Write("Vstup: ");
             Console.WriteLine("\"" + input + "\"");
@@ -89,15 +86,7 @@ namespace Huffman
             Console.WriteLine("----------");
             Console.WriteLine();
 
-            // BinaryWriter fout = new BinaryWriter(new FileStream("test_simple.dat", FileMode.Create));
-
-            // todo: uložit kodovaci tabulku
-            // znak pocet_bitu data
-            // char int BitArray
-
-            // fout.Write(SEPARATOR);
-
-            string output = "";
+            string output = string.Empty;
 
             List<bool> outputBits = new List<bool>();
             int bitCount = 0;
@@ -106,12 +95,8 @@ namespace Huffman
                 for (int i = 0; i < lookupTable[c].Length; i++)
                 {
                     bool bit = lookupTable[c][i];
-
                     outputBits.Add(bit);
-
                     output += bit ? '1' : '0';
-                    // fout.Write(bit);
-                    // fout.Flush();
                     bitCount++;
                 }
             }
@@ -128,7 +113,7 @@ namespace Huffman
             Console.Write("Velikost textu po zakódování [bit]: ");
             Console.WriteLine(bitCount);
 
-            return new KeyValuePair<Dictionary<char, BitArray>, bool[]>(lookupTable, outputBits.ToArray());
+            return new KeyValuePair<Dictionary<char, BitArray>, BitArray>(lookupTable, new BitArray(outputBits.ToArray()));
         }
 
         private static Dictionary<char, BitArray> CreateLookupTable(Node tree)
@@ -159,9 +144,9 @@ namespace Huffman
             BuildCode(node.Right, br, ref lookupTable);
         }
 
-        public static string Decode(Dictionary<char, BitArray> lookupTable, bool[] data)
+        public static string Decode(Dictionary<char, BitArray> lookupTable, BitArray data)
         {
-            string result = "";
+            string result = string.Empty;
 
             List<bool> buffer = new List<bool>();
             foreach (bool bit in data)
