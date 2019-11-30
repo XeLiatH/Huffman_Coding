@@ -13,6 +13,8 @@ namespace Huffman
 
         public static KeyValuePair<Dictionary<char, BitArray>, BitArray> Encode(string stringInput)
         {
+            Console.WriteLine(stringInput);
+
             Dictionary<char, int> frequencies = new Dictionary<char, int>();
             foreach (char symbol in stringInput)
             {

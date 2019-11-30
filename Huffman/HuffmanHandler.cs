@@ -10,31 +10,42 @@ namespace Huffman
         private Stream _input;
         private Stream _output;
 
-        public HuffmanHandler(Stream inputFile, Stream outputFile = null)
+        public HuffmanHandler(Stream input, Stream output = null)
         {
-            if (outputFile == null)
+            if (output == null)
             {
-                outputFile = Console.OpenStandardOutput();
+                output = Console.OpenStandardOutput();
             }
 
-            this._input = inputFile;
-            this._output = outputFile;
+            this._input = input;
+            this._output = output;
         }
 
         public void Encode()
         {
-            StreamReader reader = new StreamReader(this._input);
+            BinaryReader reader = new BinaryReader(this._input);
             BinaryWriter writer = new BinaryWriter(this._output);
 
-            char[] buffer = new char[Huffman.BLOCK_LENGTH];
-            while (reader.Read(buffer, 0, Huffman.BLOCK_LENGTH) > 0)
+            while (reader.BaseStream.Position != reader.BaseStream.Length)
             {
+                char[] buffer = new char[Huffman.BLOCK_LENGTH];
+                for (int i = 0; i < buffer.Length; i++)
+                {
+                    buffer[i] = reader.ReadChar();
+                    if (reader.BaseStream.Position == reader.BaseStream.Length)
+                    {
+                        break;
+                    }
+                }
+
                 string inputString = new string(buffer);
 
                 KeyValuePair<Dictionary<char, BitArray>, BitArray> encodedChunk = Huffman.Encode(inputString);
 
                 var lookupTable = encodedChunk.Key;
-                var data = encodedChunk.Value;
+                var encodedData = encodedChunk.Value;
+
+                // TODO: zapsat kodovaci tabulku na vystup
 
                 foreach (KeyValuePair<char, BitArray> lookupTableItem in lookupTable)
                 {
@@ -50,10 +61,10 @@ namespace Huffman
 
                 writer.Write(Huffman.SEPARATOR);
 
-                byte[] dateBytes = IOHelper.BitsToBytes(data);
+                byte[] encodedDateBytes = IOHelper.BitsToBytes(encodedData);
 
-                writer.Write(data.Length);
-                writer.Write(dateBytes);
+                writer.Write(encodedData.Length);
+                writer.Write(encodedDateBytes);
 
                 writer.Flush();
             }
@@ -114,7 +125,9 @@ namespace Huffman
 
                     if (dataByteLength == data.Count)
                     {
-                        decodedString += Huffman.Decode(new BitArray(data.ToArray()), lookupTable);
+                        BitArray encodedDataByteBits = new BitArray(data.ToArray());
+
+                        decodedString += Huffman.Decode(encodedDataByteBits, lookupTable);
 
                         readingLookupTable = true;
                         dataByteLength = 0;
@@ -124,7 +137,7 @@ namespace Huffman
                 }
             }
 
-            writer.Write(decodedString);
+            writer.Write(decodedString.Trim(Huffman.EMPTY_CHAR));
 
             reader.Close();
             writer.Close();
