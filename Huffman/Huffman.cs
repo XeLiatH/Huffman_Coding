@@ -13,8 +13,6 @@ namespace Huffman
 
         public static KeyValuePair<Dictionary<char, BitArray>, BitArray> Encode(string stringInput)
         {
-            Console.WriteLine(stringInput);
-
             Dictionary<char, int> frequencies = new Dictionary<char, int>();
             foreach (char symbol in stringInput)
             {
@@ -99,7 +97,7 @@ namespace Huffman
             {
                 buffer.Add(bit);
 
-                string codeKey = BitsToString(new BitArray(buffer.ToArray()));
+                string codeKey = Printer.BitsToString(new BitArray(buffer.ToArray()));
                 if (reverseLookupTable.ContainsKey(codeKey))
                 {
                     decodedString += reverseLookupTable[codeKey];
@@ -115,21 +113,10 @@ namespace Huffman
             Dictionary<string, char> reverseLookupTable = new Dictionary<string, char>();
             foreach (KeyValuePair<char, BitArray> lookupTableItem in lookupTable)
             {
-                reverseLookupTable.Add(BitsToString(lookupTableItem.Value), lookupTableItem.Key);
+                reverseLookupTable.Add(Printer.BitsToString(lookupTableItem.Value), lookupTableItem.Key);
             }
 
             return reverseLookupTable;
-        }
-
-        private static string BitsToString(BitArray binary)
-        {
-            string binaryString = string.Empty;
-            foreach (bool bit in binary)
-            {
-                binaryString += bit ? '1' : '0';
-            }
-
-            return binaryString;
         }
     }
 }

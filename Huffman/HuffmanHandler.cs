@@ -9,12 +9,16 @@ namespace Huffman
     {
         private Stream _input;
         private Stream _output;
+        private bool _verbose;
 
         public HuffmanHandler(Stream input, Stream output = null)
         {
+            this._verbose = false;
+
             if (output == null)
             {
                 output = Console.OpenStandardOutput();
+                this._verbose = true;
             }
 
             this._input = input;
@@ -45,28 +49,34 @@ namespace Huffman
                 var lookupTable = encodedChunk.Key;
                 var encodedData = encodedChunk.Value;
 
-                // TODO: zapsat kodovaci tabulku na vystup
-
-                foreach (KeyValuePair<char, BitArray> lookupTableItem in lookupTable)
-                {
-                    var symbol = lookupTableItem.Key;
-                    var code = lookupTableItem.Value;
-
-                    byte[] codeBytes = IOHelper.BitsToBytes(code);
-
-                    writer.Write(symbol);
-                    writer.Write(code.Length);
-                    writer.Write(codeBytes);
-                }
-
-                writer.Write(Huffman.SEPARATOR);
-
                 byte[] encodedDateBytes = IOHelper.BitsToBytes(encodedData);
 
-                writer.Write(encodedData.Length);
-                writer.Write(encodedDateBytes);
+                if (this._verbose)
+                {
+                    Printer.PrintLookupTable(lookupTable);
+                    Printer.PrintEncodedData(encodedDateBytes);
+                }
+                else
+                {
+                    foreach (KeyValuePair<char, BitArray> lookupTableItem in lookupTable)
+                    {
+                        var symbol = lookupTableItem.Key;
+                        var code = lookupTableItem.Value;
 
-                writer.Flush();
+                        byte[] codeBytes = IOHelper.BitsToBytes(code);
+
+                        writer.Write(symbol);
+                        writer.Write(code.Length);
+                        writer.Write(codeBytes);
+                    }
+
+                    writer.Write(Huffman.SEPARATOR);
+
+                    writer.Write(encodedData.Length);
+                    writer.Write(encodedDateBytes);
+
+                    writer.Flush();
+                }
             }
 
             reader.Close();
@@ -127,7 +137,8 @@ namespace Huffman
                     {
                         BitArray encodedDataByteBits = new BitArray(data.ToArray());
 
-                        decodedString += Huffman.Decode(encodedDataByteBits, lookupTable);
+                        string decodedChunk = Huffman.Decode(encodedDataByteBits, lookupTable);
+                        decodedString += decodedChunk;
 
                         readingLookupTable = true;
                         dataByteLength = 0;
