@@ -50,8 +50,7 @@ namespace Huffman
 
             if (opts.Mode == 'd')
             {
-                string decodedString = hh.Decode();
-                Console.WriteLine(decodedString);
+                hh.Decode();
             }
         }
     }

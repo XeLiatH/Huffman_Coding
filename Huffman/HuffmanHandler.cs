@@ -62,9 +62,10 @@ namespace Huffman
             writer.Close();
         }
 
-        public string Decode()
+        public void Decode()
         {
             BinaryReader reader = new BinaryReader(this._input);
+            StreamWriter writer = new StreamWriter(this._output);
 
             Dictionary<char, BitArray> lookupTable = new Dictionary<char, BitArray>();
             List<byte> data = new List<byte>();
@@ -123,9 +124,10 @@ namespace Huffman
                 }
             }
 
-            reader.Close();
+            writer.Write(decodedString);
 
-            return decodedString.Trim(Huffman.EMPTY_CHAR);
+            reader.Close();
+            writer.Close();
         }
     }
 }
