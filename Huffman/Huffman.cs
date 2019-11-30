@@ -9,139 +9,82 @@ namespace Huffman
     public static class Huffman
     {
         public const int BLOCK_LENGTH = 4096;
-        public const char SEPARATOR = ';';
+        public const char SEPARATOR = '\\';
 
-        public static KeyValuePair<Dictionary<char, BitArray>, BitArray> Encode(string input)
+        public static KeyValuePair<Dictionary<char, BitArray>, BitArray> Encode(string stringInput)
         {
-            Console.WriteLine();
-            Console.Write("Vstup: ");
-            Console.WriteLine("\"" + input + "\"");
-            Console.WriteLine();
-            Console.WriteLine();
-
             Dictionary<char, int> frequencies = new Dictionary<char, int>();
-            foreach (char c in input)
+            foreach (char symbol in stringInput)
             {
-                if (!frequencies.ContainsKey(c))
+                if (!frequencies.ContainsKey(symbol))
                 {
-                    frequencies[c] = 0;
+                    frequencies[symbol] = 0;
                 }
 
-                frequencies[c]++;
+                frequencies[symbol]++;
             }
 
-            Console.WriteLine("Frekvence jednotlivých znaků:");
-            Console.WriteLine("----------");
-            foreach (KeyValuePair<char, int> freq in frequencies)
-            {
-                Console.WriteLine("\"" + freq.Key + "\": " + freq.Value);
-            }
-            Console.WriteLine("----------");
-            Console.WriteLine();
-
-            List<Node> pomocnyList = new List<Node>();
-
-            Console.WriteLine("Seřazení znaků od nejmenší frekvence po nejvyšší:");
-            Console.WriteLine("----------");
+            List<Node> frequencyNodes = new List<Node>();
             foreach (KeyValuePair<char, int> freq in frequencies.OrderBy(p => p.Value))
             {
-                Console.WriteLine("\"" + freq.Key + "\": " + freq.Value);
-                pomocnyList.Add(new Node(freq.Key, freq.Value, null, null));
+                frequencyNodes.Add(new Node(freq.Key, freq.Value, null, null));
             }
-            Console.WriteLine("----------");
-            Console.WriteLine();
 
-            // sestavení stromu
-            while (pomocnyList.Count > 1)
+            while (frequencyNodes.Count > 1)
             {
-                pomocnyList = pomocnyList.OrderBy(n => n.Frequency).ToList();
+                frequencyNodes = frequencyNodes.OrderBy(n => n.Frequency).ToList();
 
-                Node left = pomocnyList[0];
-                pomocnyList.RemoveAt(0);
+                Node left = frequencyNodes[0];
+                frequencyNodes.RemoveAt(0);
 
-                Node right = pomocnyList[0];
-                pomocnyList.RemoveAt(0);
+                Node right = frequencyNodes[0];
+                frequencyNodes.RemoveAt(0);
 
                 Node parent = new Node('\0', left.Frequency + right.Frequency, left, right);
-                pomocnyList.Add(parent);
+                frequencyNodes.Add(parent);
             }
 
-            Node root = pomocnyList.First();
-            Console.WriteLine(root.Character);
+            Node root = frequencyNodes.First();
 
             Dictionary<char, BitArray> lookupTable = CreateLookupTable(root);
 
-            Console.WriteLine("Zakódování jednotlivých znaků:");
-            Console.WriteLine("----------");
-            foreach (KeyValuePair<char, BitArray> pair in lookupTable)
-            {
-                string word = "";
-                foreach (bool bit in pair.Value)
-                {
-                    word += (bit) ? '1' : '0';
-                }
-
-                Console.WriteLine("\"" + pair.Key + "\": " + word);
-            }
-            Console.WriteLine("----------");
-            Console.WriteLine();
-
-            string output = string.Empty;
-
             List<bool> outputBits = new List<bool>();
-            int bitCount = 0;
-            foreach (char c in input)
+            foreach (char symbol in stringInput)
             {
-                for (int i = 0; i < lookupTable[c].Length; i++)
+                BitArray encodedSymbol = lookupTable[symbol];
+                for (int i = 0; i < encodedSymbol.Length; i++)
                 {
-                    bool bit = lookupTable[c][i];
-                    outputBits.Add(bit);
-                    output += bit ? '1' : '0';
-                    bitCount++;
+                    outputBits.Add(encodedSymbol[i]);
                 }
             }
-
-            Console.WriteLine();
-            Console.Write("Výstup: ");
-            Console.WriteLine("\"" + output + "\"");
-            Console.WriteLine();
-            Console.WriteLine();
-
-            Console.Write("Velikost původního textu [bit]: ");
-            Console.WriteLine(System.Text.ASCIIEncoding.ASCII.GetByteCount(input) * 8);
-
-            Console.Write("Velikost textu po zakódování [bit]: ");
-            Console.WriteLine(bitCount);
 
             return new KeyValuePair<Dictionary<char, BitArray>, BitArray>(lookupTable, new BitArray(outputBits.ToArray()));
         }
 
-        private static Dictionary<char, BitArray> CreateLookupTable(Node tree)
+        private static Dictionary<char, BitArray> CreateLookupTable(Node root)
         {
             Dictionary<char, BitArray> lookupTable = new Dictionary<char, BitArray>();
-            BuildCode(tree, new List<bool>(), ref lookupTable);
+            BuildCode(root, new List<bool>(), ref lookupTable);
 
             return lookupTable;
         }
 
-        private static void BuildCode(Node node, List<bool> ba, ref Dictionary<char, BitArray> lookupTable)
+        private static void BuildCode(Node node, List<bool> bits, ref Dictionary<char, BitArray> lookupTable)
         {
             if (node.IsLeaf())
             {
-                lookupTable.Add(node.Character, new BitArray(ba.ToArray()));
+                lookupTable.Add(node.Character, new BitArray(bits.ToArray()));
                 return;
             }
 
-            // BitArray bitArray = new BitArray()
+            List<bool> leftBits = new List<bool>(bits);
+            List<bool> rightBits = new List<bool>(bits);
 
-            List<bool> bl = new List<bool>(ba);
-            List<bool> br = new List<bool>(ba);
+            leftBits.Add(false);
+            BuildCode(node.Left, leftBits, ref lookupTable);
 
-            bl.Add(false);
-            BuildCode(node.Left, bl, ref lookupTable);
-
-            br.Add(true);
-            BuildCode(node.Right, br, ref lookupTable);
+            rightBits.Add(true);
+            BuildCode(node.Right, rightBits, ref lookupTable);
         }
 
         public static string Decode(Dictionary<char, BitArray> lookupTable, BitArray data)

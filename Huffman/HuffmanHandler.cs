@@ -7,132 +7,116 @@ namespace Huffman
 {
     class HuffmanHandler
     {
-        private FileStream _inputFile;
-        private FileStream _outputFile;
-        private bool _verbose;
+        private Stream _inputFile;
+        private Stream _outputFile;
 
-        public HuffmanHandler(FileStream inputFile, FileStream outputFile = null)
+        public HuffmanHandler(Stream inputFile, Stream outputFile = null)
         {
+            if (outputFile == null)
+            {
+                outputFile = Console.OpenStandardOutput();
+            }
+
             this._inputFile = inputFile;
             this._outputFile = outputFile;
-            this._verbose = outputFile == null;
         }
 
         public void Encode()
         {
-            StreamReader sr = new StreamReader(this._inputFile);
+            StreamReader reader = new StreamReader(this._inputFile);
             BinaryWriter writer = new BinaryWriter(this._outputFile);
 
             char[] buffer = new char[Huffman.BLOCK_LENGTH];
-            while (sr.Read(buffer, 0, Huffman.BLOCK_LENGTH) > 0)
+            while (reader.Read(buffer, 0, Huffman.BLOCK_LENGTH) > 0)
             {
-                string input = new string(buffer);
+                string inputString = new string(buffer);
 
-                KeyValuePair<Dictionary<char, BitArray>, BitArray> result = Huffman.Encode(input);
+                KeyValuePair<Dictionary<char, BitArray>, BitArray> encodedChunk = Huffman.Encode(inputString);
 
-                foreach (KeyValuePair<char, BitArray> lookupTableItem in result.Key)
+                var lookupTable = encodedChunk.Key;
+                var data = encodedChunk.Value;
+
+                foreach (KeyValuePair<char, BitArray> lookupTableItem in lookupTable)
                 {
-                    var letter = lookupTableItem.Key;
+                    var symbol = lookupTableItem.Key;
                     var code = lookupTableItem.Value;
 
-                    // align code to bytes
-                    int codeByteCnt = code.Length / 8 + (code.Length % 8 == 0 ? 0 : 1);
+                    byte[] codeBytes = IOHelper.BitsToBytes(code);
 
-                    writer.Write(letter);
+                    writer.Write(symbol);
                     writer.Write(code.Length);
-
-                    byte[] codeBytes = new byte[codeByteCnt];
-                    code.CopyTo(codeBytes, 0);
                     writer.Write(codeBytes);
-
-                    // writer.Write(code.Length);
-                    // foreach (bool bit in code)
-                    // {
-                    //     writer.Write(bit);
-                    // }
                 }
 
                 writer.Write(Huffman.SEPARATOR);
 
-                int dateByteCnt = result.Value.Length / 8 + (result.Value.Length % 8 == 0 ? 0 : 1);
-                // Console.WriteLine(byteLength);
+                byte[] dateBytes = IOHelper.BitsToBytes(data);
 
-                writer.Write(result.Value.Length);
-                // foreach (bool bit in result.Value)
-                // {
-                //     writer.Write(bit);
-                // }
-
-                byte[] dateBytes = new byte[dateByteCnt];
-                result.Value.CopyTo(dateBytes, 0);
-
+                writer.Write(data.Length);
                 writer.Write(dateBytes);
 
                 writer.Flush();
             }
 
-            sr.Close();
+            reader.Close();
             writer.Close();
         }
 
-        public void Decode()
+        public string Decode()
         {
             BinaryReader reader = new BinaryReader(this._inputFile);
 
             Dictionary<char, BitArray> lookupTable = new Dictionary<char, BitArray>();
             List<byte> data = new List<byte>();
 
-            string decoded = string.Empty;
+            string decodedString = string.Empty;
 
-            int dataByteCnt = 0;
+            int dataByteLength = 0;
             bool readingLookupTable = true;
             while (reader.BaseStream.Position != reader.BaseStream.Length)
             {
                 if (readingLookupTable)
                 {
-                    char letter = reader.ReadChar();
+                    char symbol = reader.ReadChar();
 
-                    if (letter == Huffman.SEPARATOR)
+                    if (symbol == Huffman.SEPARATOR)
                     {
-                        readingLookupTable = false;
                         int dataBitLength = reader.ReadInt32();
 
-                        dataByteCnt = dataBitLength / 8 + (dataBitLength % 8 == 0 ? 0 : 1);
+                        dataByteLength = IOHelper.ByteLengthFromBitLength(dataBitLength);
+                        readingLookupTable = false;
 
                         continue;
                     }
 
-                    int len = reader.ReadInt32();
+                    int encodedSymbolBitLength = reader.ReadInt32();
+                    int encodedSymbolByteLength = IOHelper.ByteLengthFromBitLength(encodedSymbolBitLength);
 
-                    // reconstruct code byte length
-                    int codeByteCnt = len / 8 + (len % 8 == 0 ? 0 : 1);
-
-                    byte[] items = new byte[codeByteCnt];
-                    for (int i = 0; i < codeByteCnt; i++)
+                    byte[] encodedSymbolParts = new byte[encodedSymbolByteLength];
+                    for (int i = 0; i < encodedSymbolByteLength; i++)
                     {
-                        items[i] = reader.ReadByte();
+                        encodedSymbolParts[i] = reader.ReadByte();
                     }
 
-                    BitArray codeByteBits = new BitArray(items);
-                    bool[] codeBits = new bool[len];
-                    for (int i = 0; i < len; i++)
+                    BitArray encodedSymbolByteBits = new BitArray(encodedSymbolParts);
+                    BitArray encodedSymbolBits = new BitArray(encodedSymbolBitLength);
+                    for (int i = 0; i < encodedSymbolBitLength; i++)
                     {
-                        codeBits[i] = codeByteBits[i];
+                        encodedSymbolBits[i] = encodedSymbolByteBits[i];
                     }
 
-                    lookupTable.Add(letter, new BitArray(codeBits));
+                    lookupTable.Add(symbol, new BitArray(encodedSymbolBits));
                 }
                 else
                 {
                     data.Add(reader.ReadByte());
 
-                    if (dataByteCnt == data.Count)
+                    if (dataByteLength == data.Count)
                     {
-                        string dec = Huffman.Decode(lookupTable, new BitArray(data.ToArray()));
-                        Console.WriteLine(dec);
-                        decoded += dec;
+                        decodedString += Huffman.Decode(lookupTable, new BitArray(data.ToArray()));
+
                         readingLookupTable = true;
-                        dataByteCnt = 0;
+                        dataByteLength = 0;
                         lookupTable.Clear();
                         data.Clear();
                     }
@@ -141,7 +125,7 @@ namespace Huffman
 
             reader.Close();
 
-            Console.WriteLine(decoded);
+            return decodedString.Trim('\0');
         }
     }
 }

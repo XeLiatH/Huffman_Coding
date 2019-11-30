@@ -38,10 +38,10 @@ namespace Huffman
             FileStream output = null;
             if (opts.OutputFile != null)
             {
-                output = new FileStream(opts.OutputFile, FileMode.Create);
+                output = new FileStream(opts.OutputFile, FileMode.Create, FileAccess.ReadWrite);
             }
 
-            var hh = new HuffmanHandler(new FileStream(opts.InputFile, FileMode.Open), output);
+            var hh = new HuffmanHandler(new FileStream(opts.InputFile, FileMode.Open, FileAccess.Read), output);
 
             if (opts.Mode == 'k')
             {
@@ -50,7 +50,8 @@ namespace Huffman
 
             if (opts.Mode == 'd')
             {
-                hh.Decode();
+                string decodedString = hh.Decode();
+                Console.WriteLine(decodedString);
             }
         }
     }
