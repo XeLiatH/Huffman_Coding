@@ -1,6 +1,5 @@
 using System;
 using System.Linq;
-using System.IO;
 using System.Collections;
 using System.Collections.Generic;
 
@@ -9,6 +8,7 @@ namespace Huffman
     public static class Huffman
     {
         public const int BLOCK_LENGTH = 4096;
+        public const char EMPTY_CHAR = '\0';
         public const char SEPARATOR = '\\';
 
         public static KeyValuePair<Dictionary<char, BitArray>, BitArray> Encode(string stringInput)
@@ -40,7 +40,7 @@ namespace Huffman
                 Node right = frequencyNodes[0];
                 frequencyNodes.RemoveAt(0);
 
-                Node parent = new Node('\0', left.Frequency + right.Frequency, left, right);
+                Node parent = new Node(EMPTY_CHAR, left.Frequency + right.Frequency, left, right);
                 frequencyNodes.Add(parent);
             }
 
@@ -87,42 +87,47 @@ namespace Huffman
             BuildCode(node.Right, rightBits, ref lookupTable);
         }
 
-        public static string Decode(Dictionary<char, BitArray> lookupTable, BitArray data)
+        public static string Decode(BitArray encodedData, Dictionary<char, BitArray> lookupTable)
         {
-            string result = string.Empty;
+            string decodedString = string.Empty;
+            Dictionary<string, char> reverseLookupTable = CreateReverseLookupTable(lookupTable);
 
             List<bool> buffer = new List<bool>();
-            foreach (bool bit in data)
+            foreach (bool bit in encodedData)
             {
                 buffer.Add(bit);
-                foreach (KeyValuePair<char, BitArray> pair in lookupTable)
+
+                string codeKey = BitsToString(new BitArray(buffer.ToArray()));
+                if (reverseLookupTable.ContainsKey(codeKey))
                 {
-                    bool isCorrect = false;
-                    if (buffer.Count == pair.Value.Length)
-                    {
-                        for (int i = 0; i < pair.Value.Length; i++)
-                        {
-                            if (pair.Value[i] != buffer[i])
-                            {
-                                isCorrect = false;
-                                break;
-                            }
-
-                            isCorrect = true;
-                        }
-
-                    }
-
-                    if (isCorrect)
-                    {
-                        result += pair.Key;
-                        buffer.Clear();
-                        break;
-                    }
+                    decodedString += reverseLookupTable[codeKey];
+                    buffer.Clear();
                 }
             }
 
-            return result;
+            return decodedString;
+        }
+
+        private static Dictionary<string, char> CreateReverseLookupTable(Dictionary<char, BitArray> lookupTable)
+        {
+            Dictionary<string, char> reverseLookupTable = new Dictionary<string, char>();
+            foreach (KeyValuePair<char, BitArray> lookupTableItem in lookupTable)
+            {
+                reverseLookupTable.Add(BitsToString(lookupTableItem.Value), lookupTableItem.Key);
+            }
+
+            return reverseLookupTable;
+        }
+
+        private static string BitsToString(BitArray binary)
+        {
+            string binaryString = string.Empty;
+            foreach (bool bit in binary)
+            {
+                binaryString += bit ? '1' : '0';
+            }
+
+            return binaryString;
         }
     }
 }

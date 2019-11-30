@@ -7,8 +7,8 @@ namespace Huffman
 {
     class HuffmanHandler
     {
-        private Stream _inputFile;
-        private Stream _outputFile;
+        private Stream _input;
+        private Stream _output;
 
         public HuffmanHandler(Stream inputFile, Stream outputFile = null)
         {
@@ -17,14 +17,14 @@ namespace Huffman
                 outputFile = Console.OpenStandardOutput();
             }
 
-            this._inputFile = inputFile;
-            this._outputFile = outputFile;
+            this._input = inputFile;
+            this._output = outputFile;
         }
 
         public void Encode()
         {
-            StreamReader reader = new StreamReader(this._inputFile);
-            BinaryWriter writer = new BinaryWriter(this._outputFile);
+            StreamReader reader = new StreamReader(this._input);
+            BinaryWriter writer = new BinaryWriter(this._output);
 
             char[] buffer = new char[Huffman.BLOCK_LENGTH];
             while (reader.Read(buffer, 0, Huffman.BLOCK_LENGTH) > 0)
@@ -64,7 +64,7 @@ namespace Huffman
 
         public string Decode()
         {
-            BinaryReader reader = new BinaryReader(this._inputFile);
+            BinaryReader reader = new BinaryReader(this._input);
 
             Dictionary<char, BitArray> lookupTable = new Dictionary<char, BitArray>();
             List<byte> data = new List<byte>();
@@ -100,12 +100,12 @@ namespace Huffman
 
                     BitArray encodedSymbolByteBits = new BitArray(encodedSymbolParts);
                     BitArray encodedSymbolBits = new BitArray(encodedSymbolBitLength);
-                    for (int i = 0; i < encodedSymbolBitLength; i++)
+                    for (int i = 0; i < encodedSymbolBits.Length; i++)
                     {
                         encodedSymbolBits[i] = encodedSymbolByteBits[i];
                     }
 
-                    lookupTable.Add(symbol, new BitArray(encodedSymbolBits));
+                    lookupTable.Add(symbol, encodedSymbolBits);
                 }
                 else
                 {
@@ -113,7 +113,7 @@ namespace Huffman
 
                     if (dataByteLength == data.Count)
                     {
-                        decodedString += Huffman.Decode(lookupTable, new BitArray(data.ToArray()));
+                        decodedString += Huffman.Decode(new BitArray(data.ToArray()), lookupTable);
 
                         readingLookupTable = true;
                         dataByteLength = 0;
@@ -125,7 +125,7 @@ namespace Huffman
 
             reader.Close();
 
-            return decodedString.Trim('\0');
+            return decodedString.Trim(Huffman.EMPTY_CHAR);
         }
     }
 }
